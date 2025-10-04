@@ -1,0 +1,8 @@
+Pillow
+PyMuPDF
+img2pdf
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pypdf
