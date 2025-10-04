@@ -1,3 +1,12 @@
+"""
+api/jobs.py
+
+Armazena artefatos finais (PDFs) em memória por tempo limitado (TTL).
+- `save_job(data, filename) -> job_id`: salva bytes e retorna um identificador.
+- `pop_job(job_id) -> (bytes, filename)`: retorna e apaga (one-time download).
+- `purge_expired_jobs()`: remove itens que ultrapassaram o TTL.
+"""
+
 # api/jobs.py
 from __future__ import annotations
 import os, time, secrets

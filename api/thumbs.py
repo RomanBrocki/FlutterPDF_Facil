@@ -1,3 +1,11 @@
+"""
+api/thumbs.py
+
+Geração de thumbnails (pré-visualização) para PDFs e imagens.
+- `pdf_page_thumb(pdf_bytes, page_index) -> (data_url, w, h)`
+- `image_thumb(image_bytes) -> (data_url, w, h)`
+"""
+
 from __future__ import annotations
 import base64, io
 from typing import Tuple, Any

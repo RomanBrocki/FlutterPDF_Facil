@@ -106,7 +106,7 @@ Body:
   "keep":   [ true, true ],
   "rotate": [ 0, 0 ],
   "level_page": [ "none", "none" ],
-  "level_global": "med"   // opcional (aplica a todas com keep=true)
+  "level_global": "none"  // opcional; se ausente, o backend assume "none"
 }
 ```
 Resposta (resumo):
@@ -128,7 +128,7 @@ Body (mesmo do /estimate + `filename_out`):
   "keep":   [ true, true ],
   "rotate": [ 0, 0 ],
   "level_page": [ "none", "none" ],
-  "level_global": "max",
+  "level_global": "none",
   "filename_out": "resultado.pdf"
 }
 ```
@@ -233,6 +233,14 @@ uvicorn api.main:app --host 0.0.0.0 --port $PORT
 - Para compressão global, use `level_global` e mantenha `level_page` como `"none"`.
 
 ---
+
+## Observações
+
+### Padrões (defaults)
+- **Nível de compressão padrão:** `none` (sem compressão).  
+  Se `level_global` vier ausente **ou** `level_page` vier vazio/curto, o backend completa com `none`.
+- **Rotação padrão:** `0` (sem rotação).
+- **Keep padrão:** é obrigatório informar, mas páginas marcadas como `false` são ignoradas.
 
 ## Observações
 

@@ -1,3 +1,10 @@
+"""
+engine/engine_config.py
+
+Define presets de compressão alinhados ao app original.
+`LEVELS` mapeia: 'none'|'min'|'med'|'max' -> {mode, dpi, jpg_q}
+"""
+
 # engine/engine_config.py
 from __future__ import annotations
 from typing import Dict
