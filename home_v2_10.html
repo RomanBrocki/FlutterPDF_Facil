@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF Fácil — Web UI</title>
+  <style>
+    :root{
+      --bg:#0b0f17;--card:#0f1420;--card2:#111725;--fg:#e8ecf3;--muted:#98a3b7;--line:#1f2a3e;
+      --accent:#7aa2ff;--accent2:#99b4ff;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#0b0f17,#0b0f17 60%,#0a0e16);
+      color:var(--fg);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial}
+    header{position:sticky;top:0;z-index:20;background:rgba(11,15,23,.7);backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--line)}
+    .wrap{max-width:1200px;margin:0 auto;padding:14px}
+    h1{font-size:16px;margin:0 10px 0 0;color:#fff;font-weight:700;letter-spacing:.2px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--fg);
+      padding:9px 12px;border-radius:12px;cursor:pointer;transition:.2s}
+    .btn:hover{border-color:#2b3956;transform:translateY(-1px)}
+    .btn.primary{background:var(--accent);border-color:#5f82ff;color:#fff}
+    .btn.ghost{background:transparent}
+    .btn.small{padding:6px 8px;border-radius:10px;font-size:12px}
+    .btn.icon{padding:6px 8px;display:inline-flex;align-items:center;gap:6px}
+    .sel,.text{background:var(--card2);border:1px solid var(--line);color:var(--fg);
+      padding:9px 10px;border-radius:10px}
+    input[type="file"]{display:none}
+    .stat{font-size:13px;color:var(--muted)}
+    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0e1524;color:#cbd5e1;
+      cursor:pointer;user-select:none}
+    .pill.active{background:#1b2740;border-color:#31405f;color:#e7ecff}
+    .grid{display:grid;grid-template-columns:repeat( auto-fill, minmax(220px,1fr) );gap:12px;margin-top:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+    .thumb{width:100%;height:260px;object-fit:contain;background:#0b0f15;transition:.2s;display:block}
+    .meta{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px}
+    .muted{font-size:12px;color:var(--muted)}
+    .ops{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px dashed var(--line)}
+    .ops .row{justify-content:space-between}
+    .lvl{display:flex;gap:6px;flex-wrap:wrap}
+    .lvl .pill{font-size:12px;padding:4px 8px}
+    .keep{display:flex;align-items:center;gap:6px}
+    .updown{display:flex;gap:6px}
+    .rot{display:flex;gap:6px}
+    footer{margin-top:16px;color:var(--muted)}
+    a{color:#c7d2fe}
+    .filelist{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .chip{background:#0e1524;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;color:#cbd5e1}
+    .section{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);margin-top:12px}
+    .section h3{margin:0 0 6px 0;font-size:14px;color:#e5e7eb}
+  
+    /* Hero (título isolado no topo) */
+    .hero{padding:22px 14px 10px;border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg,rgba(122,162,255,.08),transparent)}
+    .hero .wrap{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+    .hero-logo{width:36px;height:36px;border-radius:10px;
+      background:conic-gradient(from 180deg,var(--accent),var(--accent2),var(--accent));
+      box-shadow:0 0 0 1px #2b3956 inset,0 8px 22px rgba(122,162,255,.28)}
+    .hero-title{margin:0;font-weight:900;letter-spacing:.3px;line-height:1.05;
+      font-size:clamp(28px,6vw,54px);
+      background:linear-gradient(90deg,#eef3ff 0%,#c9d6ff 35%,#9ab2ff 70%,#b5c4ff 100%);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      text-shadow:0 2px 30px rgba(154,178,255,.2)}
+    /* Links do projeto */
+    .links {display:flex;flex-wrap:wrap;gap:8px}
+    .linkpill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#0e1524;color:#dbe2ff;text-decoration:none;font-size:13px}
+    .linkpill:hover{border-color:#31405f;transform:translateY(-1px)}
+
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-logo" aria-hidden="true"></div>
+      <h1 class="hero-title">PDF Fácil</h1>
+    </div>
+  </section>
+
+  <header>
+    <div class="wrap row" style="justify-content:space-between">
+      <div class="row"> <label class="btn icon">
+          <input id="fileInput" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" />
+          <span>📤 Selecionar arquivos</span>
+        </label>
+        <button id="btnClear" class="btn ghost">Limpar seleção</button>
+      </div>
+      <div class="stat" id="stat">Aguardando arquivos…</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="section">
+      <h3>Arquivos selecionados</h3>
+      <div id="fileList" class="filelist"></div>
+    </section>
+
+    <section class="section">
+      <h3>Configurações globais</h3>
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:12px">
+          <div class="row">
+            <label class="muted">Ordenar:</label>
+            <select id="sortSel" class="sel">
+              <option value="original">Original</option>
+              <option value="name">Nome</option>
+              <option value="type">Tipo (img→pdf)</option>
+            </select>
+          </div>
+          <div class="row">
+            <label class="muted">Compressão global:</label>
+            <div id="lvlGlobal" class="lvl">
+              <span class="pill" data-lvl="none">Nenhuma</span>
+              <span class="pill" data-lvl="min">Mín</span>
+              <span class="pill" data-lvl="med">Méd</span>
+              <span class="pill" data-lvl="max">Máx</span>
+            </div>
+          </div>
+          <div class="row">
+            <label class="muted">Nome do arquivo:</label>
+            <input id="fname" class="text" placeholder="arquivo_final.pdf" value="arquivo_final.pdf" />
+          </div>
+        </div>
+        <div class="row">
+          <button id="btnEstimate" class="btn ghost" disabled>Estimar tamanho</button>
+          <button id="btnProcess"  class="btn primary" disabled>Gerar PDF</button>
+          <a id="downloadLink" class="btn ghost" style="display:none" download>Baixar</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h3>Páginas</h3>
+      <div id="grid" class="grid"></div>
+    </section>
+
+    
+    <section class="section">
+      <h3>Links do projeto</h3>
+      <div class="links">
+        <a class="linkpill" href="https://github.com/RomanBrocki/FlutterPDF_Facil" target="_blank" rel="noopener">Backend (FlutterPDF_Facil)</a>
+        <a class="linkpill" href="https://github.com/RomanBrocki/PDF_Facil" target="_blank" rel="noopener">App Streamlit (PDF_Facil)</a>
+        <a class="linkpill" href="https://pdf-facil.streamlit.app/" target="_blank" rel="noopener">Demo Streamlit</a>
+      </div>
+    </section>
+
+
+    <footer class="muted">Backend: <code>https://pdf-facil.onrender.com</code></footer>
+  </main>
+
+<script>
+const BASE = 'https://pdf-facil.onrender.com';
+const $  = (s)=>document.querySelector(s);
+const $$ = (s)=>Array.from(document.querySelectorAll(s));
+
+let token = null;
+let items = [];         // vindo do backend
+let order = [];
+let keep  = [];
+let rotate= [];
+let level_page = [];
+let filesInMemory = [];     // Array<File> acumulado (apenas para lista)
+
+function setStatus(t){ $('#stat').textContent = t; }
+
+function displayName(it){
+  const local = (filesInMemory[it.src_id]?.name);
+  const base = local ? local.split('/').pop().split('\\\\').pop() : (it.filename || ('src'+it.src_id));
+  return `${base} p.${(it.page_index||0)+1}`;
+}
+
+// Global compression
+const lvlGlobal = $('#lvlGlobal');
+let lvlGlobalValue = 'none';
+function syncGlobalPills(){
+  $$('#lvlGlobal .pill').forEach(p=>p.classList.toggle('active', p.dataset.lvl===lvlGlobalValue));
+}
+lvlGlobal.addEventListener('click', (ev)=>{
+  const el = ev.target.closest('.pill'); if(!el) return;
+  lvlGlobalValue = el.dataset.lvl;
+  level_page = level_page.map(()=>lvlGlobalValue);
+  items.forEach((_,i)=>{ items[i].level=lvlGlobalValue; syncCardLevel(i); });
+  syncGlobalPills();
+});
+syncGlobalPills();
+
+// Upload incremental -> POST imediato ao backend
+const fileInput = $('#fileInput');
+fileInput.addEventListener('change', async ()=>{
+  if(!fileInput.files?.length) return;
+  for(const f of fileInput.files){ filesInMemory.push(f); }
+  renderFileList();
+  await doPreview();  // POST já
+  fileInput.value = '';
+});
+
+// Limpar
+$('#btnClear').addEventListener('click', ()=>{
+  filesInMemory = [];
+  token = null; items=[]; order=[]; keep=[]; rotate=[]; level_page=[];
+  $('#grid').innerHTML='';
+  $('#downloadLink').style.display='none';
+  $('#btnProcess').disabled = true;
+  $('#btnEstimate').disabled = true;
+  renderFileList();
+  setStatus('Aguardando arquivos…');
+});
+
+function renderFileList(){
+  const box = $('#fileList'); box.innerHTML='';
+  if(filesInMemory.length===0){ box.innerHTML = '<span class="muted">Nenhum arquivo selecionado.</span>'; return; }
+  for(const f of filesInMemory){
+    const div = document.createElement('span'); div.className='chip'; div.textContent = f.name;
+    box.appendChild(div);
+  }
+}
+
+// PREVIEW do backend
+async function doPreview(){
+  if(!filesInMemory.length){ setStatus('Aguardando arquivos…'); return; }
+  setStatus('Enviando arquivos…');
+  const form = new FormData();
+  filesInMemory.forEach(f=>form.append('files', f)); // envia TODOS os acumulados
+  try{
+    const r = await fetch(BASE + '/preview', { method:'POST', body: form, headers:{'Accept':'application/json'} });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    token = data.token;
+
+    // itens do backend (PDF destrinchado)
+    items = data.items.map((it, idx)=>({ ...it, rotation:0, keep:true, level:'none', __orig: idx }));
+
+    order = items.map(it=>({src_id:it.src_id,page_index:it.page_index}));
+    keep  = items.map(()=>true);
+    rotate= items.map(()=>0);
+    level_page = items.map(()=> 'none' );
+
+    renderGrid();
+    $('#btnProcess').disabled = false;
+    $('#btnEstimate').disabled = false;
+    $('#downloadLink').style.display = 'none';
+    setStatus(`Pré-visualização pronta. ${items.length} páginas.`);
+  }catch(e){
+    console.error(e);
+    alert('Erro no /preview.');
+    setStatus('Erro no preview.');
+  }
+}
+
+// Grid com thumbs do backend
+function renderGrid(){
+  const g = $('#grid'); g.innerHTML = '';
+  items.forEach((it, i)=>{
+    const card = document.createElement('div'); card.className='card'; card.dataset.idx=i;
+
+    const img = document.createElement('img'); img.className='thumb';
+    img.src = it.thumb_b64; // direto (dataURL)
+    img.style.transform = `rotate(${it.rotation||0}deg)`;
+    card.appendChild(img);
+
+    const meta = document.createElement('div'); meta.className='meta';
+    const label = displayName(it);
+    meta.innerHTML = `<div class="muted">${escapeHtml(label)}</div>
+                      <div class="muted">${it.is_pdf? 'pdf':'image'}</div>`;
+    card.appendChild(meta);
+
+    const ops = document.createElement('div'); ops.className='ops';
+
+    // Linha 1: Up/Down + Keep
+    const row1 = document.createElement('div'); row1.className='row';
+    const updown = document.createElement('div'); updown.className='updown';
+    const bUp = mkBtn('▲', 'small'); const bDn = mkBtn('▼', 'small');
+    bUp.addEventListener('click', ()=>moveCard(i, -1));
+    bDn.addEventListener('click', ()=>moveCard(i, +1));
+    updown.append(bUp,bDn);
+
+    const keepDiv = document.createElement('label'); keepDiv.className='keep';
+    const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = it.keep;
+    cb.addEventListener('change', ()=>{ items[i].keep = cb.checked; keep[i]=cb.checked; });
+    keepDiv.append(cb, document.createTextNode('Manter'));
+    row1.append(updown, keepDiv);
+
+    // Linha 2: Rotação + Nível individual
+    const row2 = document.createElement('div'); row2.className='row';
+    const rot = document.createElement('div'); rot.className='rot';
+    const rL = mkBtn('⟲ 90°', 'small'); const rR = mkBtn('⟳ 90°', 'small');
+    rL.addEventListener('click', ()=>rotateCard(i, -90));
+    rR.addEventListener('click', ()=>rotateCard(i, +90));
+    rot.append(rL,rR);
+
+    const lvl = document.createElement('div'); lvl.className='lvl';
+    ['none','min','med','max'].forEach(lv=>{
+      const p = document.createElement('span'); p.className='pill'; p.dataset.lvl=lv; p.textContent = (
+        lv==='none'?'Nenhuma':(lv==='min'?'Mín':(lv==='med'?'Méd':'Máx'))
+      );
+      p.addEventListener('click', ()=>{ level_page[i]=lv; items[i].level=lv; syncCardLevel(i); });
+      lvl.appendChild(p);
+    });
+    row2.append(rot,lvl);
+
+    ops.append(row1,row2);
+    card.appendChild(ops);
+    g.appendChild(card);
+
+    syncCardLevel(i);
+  });
+}
+
+function syncCardLevel(i){
+  const card = $(`.card[data-idx="${i}"]`);
+  if(!card) return;
+  const pills = Array.from(card.querySelectorAll('.pill'));
+  pills.forEach(p=>p.classList.toggle('active', p.dataset.lvl===items[i].level));
+}
+
+// mover posição (setas)
+function moveCard(i, delta){
+  const j = i + delta;
+  if(j<0 || j>=items.length) return;
+  const [moved]=items.splice(i,1);
+  items.splice(j,0,moved);
+  order = items.map(it=>({src_id:it.src_id,page_index:it.page_index}));
+  keep  = items.map(it=>it.keep);
+  rotate= items.map(it=>it.rotation||0);
+  level_page = items.map(it=>it.level||'none');
+  renderGrid();
+}
+
+// rotação
+function rotateCard(i, d){
+  const v = (((items[i].rotation||0)+d)%360+360)%360;
+  items[i].rotation = v;
+  rotate[i] = v;
+  const img = $(`.card[data-idx="${i}"] .thumb`);
+  if(img) img.style.transform = `rotate(${v}deg)`;
+}
+
+// Ordenação global
+$('#sortSel').addEventListener('change', ()=>{
+  const val = $('#sortSel').value;
+  if(val==='original'){
+    items.sort((a,b)=> (a.__orig??0) - (b.__orig??0) );
+  }else if(val==='name'){
+    items.sort((a,b)=> displayName(a).localeCompare(displayName(b)) || a.page_index-b.page_index );
+  }else if(val==='type'){
+    const rank = (it)=> it.is_pdf ? 1 : 0; // imagem primeiro
+    items.sort((a,b)=> rank(a) - rank(b) || displayName(a).localeCompare(displayName(b)) || a.page_index-b.page_index );
+  }
+  order = items.map(it=>({src_id:it.src_id,page_index:it.page_index}));
+  keep  = items.map(it=>it.keep);
+  rotate= items.map(it=>it.rotation||0);
+  level_page = items.map(it=>it.level||'none');
+  renderGrid();
+});
+
+// Estimar
+$('#btnEstimate').addEventListener('click', async ()=>{
+  if(!token){ alert('Adicione arquivos primeiro.'); return; }
+  setStatus('Estimando…');
+  try{
+    const payload = { token, order, keep, rotate, level_page };
+    const r = await fetch(BASE + '/estimate', {
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    const before = data.total_before_bytes||0;
+    const after  = data.total_after_bytes||0;
+    const pct = before>0 ? Math.round(100 - (after*100/before)) : 0;
+    setStatus(`Estimativa: ${(before/1e6).toFixed(2)}MB → ${(after/1e6).toFixed(2)}MB (−${pct}%)`);
+  }catch(e){
+    console.error(e); alert('Erro no /estimate.'); setStatus('Erro na estimativa.');
+  }
+});
+
+// Processar
+$('#btnProcess').addEventListener('click', async ()=>{
+  if(!token){ alert('Adicione arquivos primeiro.'); return; }
+  const filename_out = ($('#fname').value||'arquivo_final.pdf').trim().toLowerCase().endsWith('.pdf')
+    ? $('#fname').value.trim() : $('#fname').value.trim()+'.pdf';
+  setStatus('Processando…');
+  try{
+    const payload = { token, order, keep, rotate, level_page, filename_out };
+    const r = await fetch(BASE + '/process', {
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    const url = data.download_url ? (BASE + data.download_url) : (BASE + '/download/one-time/' + data.job_id);
+    const a = $('#downloadLink');
+    a.href = url; a.style.display='inline-block';
+    a.textContent = 'Baixar: ' + (data.filename || filename_out);
+    setStatus('Arquivo pronto para download.');
+    a.onclick = () => {
+      setTimeout(() => {
+        a.style.display = 'none';
+        a.removeAttribute('href');
+        a.textContent = 'Baixar';
+      }, 500);
+    };
+  }catch(e){
+    console.error(e); alert('Erro no /process.'); setStatus('Erro no processamento.');
+  }
+});
+
+function mkBtn(txt, ...cls){ const b=document.createElement('button'); b.className=['btn',...cls].join(' '); b.textContent=txt; return b; }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+</script>
+</body>
+</html>
