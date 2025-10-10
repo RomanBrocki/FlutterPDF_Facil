@@ -175,14 +175,24 @@ let lvlGlobalValue = 'none';
 function syncGlobalPills(){
   $$('#lvlGlobal .pill').forEach(p=>p.classList.toggle('active', p.dataset.lvl===lvlGlobalValue));
 }
+// Compressão global (fix: sincroniza arrays pelo tamanho de items)
 lvlGlobal.addEventListener('click', (ev)=>{
   const el = ev.target.closest('.pill'); if(!el) return;
   lvlGlobalValue = el.dataset.lvl;
-  level_page = level_page.map(()=>lvlGlobalValue);
-  items.forEach((_,i)=>{ items[i].level=lvlGlobalValue; syncCardLevel(i); });
+
+  // aplica no estado fonte (items)
+  items.forEach((_, i)=>{ items[i].level = lvlGlobalValue; });
+
+  // IMPORTANTe: refaz level_page do zero com o MESMO comprimento de items
+  level_page = items.map(()=> lvlGlobalValue);
+
+  // mantém arrays alinhados SEMPRE que mudar global
+  if (typeof syncArraysFromItems === 'function') syncArraysFromItems();
+
   syncGlobalPills();
+  renderGrid(); // re-render para deixar a mudança visível
 });
-syncGlobalPills();
+
 
 // Upload incremental -> POST imediato ao backend
 const fileInput = $('#fileInput');
@@ -382,7 +392,7 @@ $('#btnEstimate').addEventListener('click', async ()=>{
   syncArraysFromItems();
 
   try{
-    const payload = { token, order, keep, rotate, level_page };
+    const payload = { token, order, keep, rotate, level_page, level_global: lvlGlobalValue };
     const r = await fetch(BASE + '/estimate', {
       method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
       body: JSON.stringify(payload)
@@ -406,7 +416,7 @@ $('#btnProcess').addEventListener('click', async ()=>{
   setStatus('Processando…');
   syncArraysFromItems();
   try{
-    const payload = { token, order, keep, rotate, level_page, filename_out };
+    const payload = { token, order, keep, rotate, level_page, level_global: lvlGlobalValue, filename_out };
     const r = await fetch(BASE + '/process', {
       method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
       body: JSON.stringify(payload)
