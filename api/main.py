@@ -22,7 +22,25 @@ from .thumbs import pdf_page_thumb, image_thumb
 # ---- Config mínimos (ambiente ou default) ----
 FILE_MAX_MB  = int(os.getenv("FILE_MAX_MB", "50"))
 BATCH_MAX_MB = int(os.getenv("BATCH_MAX_MB", "75"))
-CORS_ALLOW_ORIGINS = os.getenv("CORS_ALLOW_ORIGINS", "*").split(",")
+
+origins_env = os.getenv("CORS_ALLOW_ORIGINS", "*").strip()
+if origins_env == "*":
+    CORS_ALLOW_ORIGINS = ["*"]
+    CORS_ALLOW_CREDENTIALS = False   # <-- chave do problema
+else:
+    CORS_ALLOW_ORIGINS = [o.strip() for o in origins_env.split(",") if o.strip()]
+    CORS_ALLOW_CREDENTIALS = True
+
+app = FastAPI(title="PDF_Facil API (mínima)")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOW_ORIGINS,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 def _bytes_mb(n: int) -> float:
     return n / (1024 * 1024)
