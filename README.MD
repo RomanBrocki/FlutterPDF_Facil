@@ -215,3 +215,17 @@ Acesse: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 Desenvolvido por **Roman Brocki**  
 Backend em Python • Frontend em HTML/JS  
 Hospedagem gratuita no **Render** e **GitHub Pages**
+
+
+---
+
+## Licenças e Créditos
+
+Este projeto utiliza bibliotecas open source sob licenças permissivas.  
+Em especial, inclui o **PyMuPDF**, distribuído sob licença **AGPL-3.0**.
+
+- **PyMuPDF (AGPL-3.0)** — © Artifex Software, Inc.  
+  Uso permitido em software aberto; este projeto mantém seu código-fonte público conforme os termos da AGPL.  
+- **Demais bibliotecas** (FastAPI, Pillow, Pydantic, Uvicorn, etc.) — sob licenças MIT, BSD ou Apache 2.0, livres para uso comercial.
+
+O código-fonte completo deste projeto está disponível publicamente, cumprindo todas as exigências de licenciamento.
