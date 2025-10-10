@@ -336,10 +336,12 @@ function rotateCard(i, d){
 }
 
 function sortKeyName(it){
-  // cria chave estável para ordenação
-  const fname = (filesInMemory[it.src_id]?.name || (`src${it.src_id}`)).toLowerCase();
+  const fi = (Array.isArray(filesInMemory) && filesInMemory[it.src_id])
+    ? filesInMemory[it.src_id].name
+    : null;
+  const base = (fi || it.filename || (`src${it.src_id}`)).toLowerCase();
   const pn = String(it.page_index ?? 0).padStart(6,'0');
-  return `${fname}#${pn}`;
+  return `${base}#${pn}`;
 }
 
 // Ordenação global (corrigida)
@@ -353,7 +355,6 @@ $('#sortSel').addEventListener('change', ()=>{
     const rank = (it)=> it.is_pdf ? 1 : 0; // imagem primeiro
     items.sort((a,b)=> rank(a) - rank(b) || sortKeyName(a).localeCompare(sortKeyName(b)));
   }
-
   order      = items.map(it=>({src_id:it.src_id,page_index:it.page_index}));
   keep       = items.map(it=>it.keep);
   rotate     = items.map(it=>it.rotation||0);
