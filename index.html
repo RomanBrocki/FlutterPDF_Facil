@@ -362,10 +362,25 @@ $('#sortSel').addEventListener('change', ()=>{
   renderGrid();
 });
 
+function syncArraysFromItems(){
+  // Garante que todos os arrays tenham o MESMO tamanho de items
+  order      = items.map(it=>({ src_id: it.src_id, page_index: it.page_index }));
+  keep       = items.map(it=> !!it.keep);
+  rotate     = items.map(it=> parseInt(it.rotation||0, 10) || 0);
+  level_page = items.map(it=> it.level || 'none');
+
+  // Saneamento extra (evita valores inválidos):
+  level_page = level_page.map(lv => (['none','min','med','max'].includes(lv) ? lv : 'none'));
+}
+
+
 // Estimar
 $('#btnEstimate').addEventListener('click', async ()=>{
   if(!token){ alert('Adicione arquivos primeiro.'); return; }
   setStatus('Estimando…');
+
+  syncArraysFromItems();
+
   try{
     const payload = { token, order, keep, rotate, level_page };
     const r = await fetch(BASE + '/estimate', {
@@ -389,6 +404,7 @@ $('#btnProcess').addEventListener('click', async ()=>{
   const filename_out = ($('#fname').value||'arquivo_final.pdf').trim().toLowerCase().endsWith('.pdf')
     ? $('#fname').value.trim() : $('#fname').value.trim()+'.pdf';
   setStatus('Processando…');
+  syncArraysFromItems();
   try{
     const payload = { token, order, keep, rotate, level_page, filename_out };
     const r = await fetch(BASE + '/process', {
