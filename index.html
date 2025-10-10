@@ -432,46 +432,54 @@ $('#btnEstimate').addEventListener('click', async ()=>{
 
   syncArraysFromItems();
 
-  try{
+  try {
   const lp = (lvlGlobalValue === 'none') ? level_page : [];
   let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue };
-  
-  await warmup(); 
+
+  await warmup();
   let r = await fetch(BASE + '/estimate', {
-    method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+    method: 'POST',
+    mode: 'cors',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
 
-    // retry 1x se 502/network
-    if (!r.ok && (r.status === 502 || r.type === 'opaqueredirect')) {
+  // retry 1x se 502
+  if (!r.ok && r.status === 502) {
     await warmup();
     r = await fetch(BASE + '/estimate', {
-      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
   }
 
-  // Retry se sessão caiu
-  if(r.status === 404){
+  // retry se sessão expirada
+  if (r.status === 404) {
     const txt = await r.text().catch(()=> '');
     if ((txt||'').includes('Sessão expirada')) {
-      await doPreview();                 // recria token e items
-      syncArraysFromItems();             // realinha arrays
+      await doPreview();
+      syncArraysFromItems();
       const lp2 = (lvlGlobalValue === 'none') ? level_page : [];
       payload = { token, order, keep, rotate, level_page: lp2, level_global: lvlGlobalValue };
       r = await fetch(BASE + '/estimate', {
-        method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
     } else {
-      // 404 por outro motivo
       alert(`Erro no /estimate (404).\n${txt || 'Sem detalhe.'}`);
       setStatus('Erro na estimativa.');
       return;
     }
   }
 
-  if(!r.ok){
+  if (!r.ok) {
     const txt = await r.text().catch(()=> '');
     console.error('Estimate FAIL', r.status, txt, {payload});
     alert(`Erro no /estimate (${r.status}).\n${txt || 'Sem detalhe.'}`);
@@ -484,11 +492,12 @@ $('#btnEstimate').addEventListener('click', async ()=>{
   const after  = data.total_after_bytes||0;
   const pct = before>0 ? Math.round(100 - (after*100/before)) : 0;
   setStatus(`Estimativa: ${(before/1e6).toFixed(2)}MB → ${(after/1e6).toFixed(2)}MB (−${pct}%)`);
-}catch(e){
+} catch (e) {
   console.error('Estimate EXC', e);
   alert('Exceção no /estimate (ver console).');
   setStatus('Erro na estimativa.');
 }
+
 
 });
 
@@ -500,32 +509,44 @@ $('#btnProcess').addEventListener('click', async ()=>{
     ? $('#fname').value.trim() : $('#fname').value.trim()+'.pdf';
   setStatus('Processando…');
   syncArraysFromItems();
-  try{
+  try {
   const lp = (lvlGlobalValue === 'none') ? level_page : [];
   let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue, filename_out };
-  await warmup(); 
+
+  await warmup();
   let r = await fetch(BASE + '/process', {
-    method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+    method: 'POST',
+    mode: 'cors',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
-    if (!r.ok && (r.status === 502 || r.type === 'opaqueredirect')) {
+
+  // retry 1x se 502
+  if (!r.ok && r.status === 502) {
     await warmup();
     r = await fetch(BASE + '/process', {
-      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
   }
 
-  // Retry se sessão caiu
-  if(r.status === 404){
+  // retry se sessão expirada
+  if (r.status === 404) {
     const txt = await r.text().catch(()=> '');
     if ((txt||'').includes('Sessão expirada')) {
-      await doPreview();                 // recria token e items
-      syncArraysFromItems();             // realinha arrays
+      await doPreview();
+      syncArraysFromItems();
       const lp2 = (lvlGlobalValue === 'none') ? level_page : [];
       payload = { token, order, keep, rotate, level_page: lp2, level_global: lvlGlobalValue, filename_out };
       r = await fetch(BASE + '/process', {
-        method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
     } else {
@@ -535,7 +556,7 @@ $('#btnProcess').addEventListener('click', async ()=>{
     }
   }
 
-  if(!r.ok){
+  if (!r.ok) {
     const txt = await r.text().catch(()=> '');
     console.error('Process FAIL', r.status, txt, {payload});
     alert(`Erro no /process (${r.status}).\n${txt || 'Sem detalhe.'}`);
@@ -556,11 +577,12 @@ $('#btnProcess').addEventListener('click', async ()=>{
       a.textContent = 'Baixar';
     }, 500);
   };
-}catch(e){
+} catch (e) {
   console.error('Process EXC', e);
   alert('Exceção no /process (ver console).');
   setStatus('Erro no processamento.');
 }
+
 
 });
 
