@@ -161,6 +161,19 @@ let rotate= [];
 let level_page = [];
 let filesInMemory = [];     // Array<File> acumulado (apenas para lista)
 
+async function warmup(){
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch(BASE + '/health', { method:'GET', cache:'no-store' });
+      if (r.ok) return true;
+    } catch (_) {}
+    await new Promise(res => setTimeout(res, 600));
+  }
+  return false;
+}
+
+
+
 const VALID_LEVELS = new Set(['none','min','med','max']);
 function normalizeLevel(v){ return VALID_LEVELS.has(v) ? v : 'none'; }
 
@@ -236,6 +249,7 @@ async function doPreview(){
   const form = new FormData();
   filesInMemory.forEach(f=>form.append('files', f)); // envia TODOS os acumulados
   try{
+    await warmup();
     const r = await fetch(BASE + '/preview', { method:'POST', body: form, headers:{'Accept':'application/json'} });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const data = await r.json();
@@ -411,7 +425,8 @@ $('#btnEstimate').addEventListener('click', async ()=>{
   try{
   const lp = (lvlGlobalValue === 'none') ? level_page : [];
   let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue };
-
+  
+  await warmup(); 
   let r = await fetch(BASE + '/estimate', {
     method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
     body: JSON.stringify(payload)
@@ -469,6 +484,7 @@ $('#btnProcess').addEventListener('click', async ()=>{
   try{
   const lp = (lvlGlobalValue === 'none') ? level_page : [];
   let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue, filename_out };
+  await warmup(); 
   let r = await fetch(BASE + '/process', {
     method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
     body: JSON.stringify(payload)
