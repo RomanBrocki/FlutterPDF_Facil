@@ -17,6 +17,7 @@ from __future__ import annotations
 import io
 from typing import Dict, Iterable, List, Tuple, cast, Any
 
+import math, gc
 import img2pdf
 import fitz  # PyMuPDF
 from PIL import Image
@@ -37,6 +38,16 @@ from .engine_config import LEVELS
 # ===========================
 #   ESTIMATIVAS (rápidas)
 # ===========================
+def _cap_dpi_for_page(page, dpi, max_megapixels=80):
+    """Limita o DPI efetivo para evitar > ~80MP por página (ajuste se quiser)."""
+    r = page.rect
+    px = (r.width * dpi / 72.0) * (r.height * dpi / 72.0)
+    max_px = max_megapixels * 1_000_000
+    if px <= max_px:
+        return dpi
+    scale = math.sqrt(max_px / px)
+    return max(72, int(dpi * scale))
+
 def _is_image_only(page: "fitz.Page") -> bool:
 
 
@@ -87,8 +98,12 @@ def estimate_pdf_size(pdf_bytes: bytes, level: str) -> int:
         jpg_pages = []
         for i in range(doc.page_count):
             pg = doc.load_page(i)
-            pix = pg.get_pixmap(dpi=dpi, alpha=False)  # pyright: ignore[reportAttributeAccessIssue]
+            dpi_eff = _cap_dpi_for_page(pg, dpi)
+            mat = fitz.Matrix(dpi_eff/72.0, dpi_eff/72.0)
+            pix = pg.get_pixmap(matrix=mat, alpha=False, colorspace=fitz.csRGB)  # pyright: ignore[reportAttributeAccessIssue]
             jpg_pages.append(pix.tobytes("jpeg", jpg_quality=jpg_q))
+            del pix
+
         doc.close()
         try:
             est_pdf = cast(bytes, img2pdf.convert(jpg_pages))
@@ -105,8 +120,12 @@ def estimate_pdf_size(pdf_bytes: bytes, level: str) -> int:
             dst_doc.insert_pdf(src_doc, from_page=i, to_page=i)
 
         def _rasterize_to(dst_doc, page_obj: "fitz.Page", dpi_val: int, jpeg_q: int):
-            pix = page_obj.get_pixmap(dpi=dpi_val, alpha=False)  # pyright: ignore[reportAttributeAccessIssue]
+            dpi_eff = _cap_dpi_for_page(page_obj, dpi_val)
+            mat = fitz.Matrix(dpi_eff/72.0, dpi_eff/72.0)
+            pix = page_obj.get_pixmap(matrix=mat, alpha=False, colorspace=fitz.csRGB)  # pyright: ignore[reportAttributeAccessIssue]
             img_bytes = pix.tobytes("jpeg", jpg_quality=jpeg_q)
+            del pix
+
             rect = page_obj.rect
             p = dst_doc.new_page(width=rect.width, height=rect.height)
             p.insert_image(rect, stream=img_bytes)
@@ -156,8 +175,12 @@ def estimate_pdf_page_size(pdf_bytes: bytes, page_idx: int, level: str) -> int:
         return est
 
     if mode == "all":
-        pix = pg.get_pixmap(dpi=dpi, alpha=False)  # pyright: ignore[reportAttributeAccessIssue]
+        dpi_eff = _cap_dpi_for_page(pg, dpi)
+        mat = fitz.Matrix(dpi_eff/72.0, dpi_eff/72.0)
+        pix = pg.get_pixmap(matrix=mat, alpha=False, colorspace=fitz.csRGB)  # pyright: ignore[reportAttributeAccessIssue]
         jpg_b = pix.tobytes("jpeg", jpg_quality=jpg_q)
+        del pix
+
         try:
             est_pdf = cast(bytes, img2pdf.convert(jpg_b))
         except Exception:
@@ -167,8 +190,12 @@ def estimate_pdf_page_size(pdf_bytes: bytes, page_idx: int, level: str) -> int:
 
     if mode == "smart":
         if _is_image_only(pg):
-            pix = pg.get_pixmap(dpi=dpi, alpha=False)  # pyright: ignore[reportAttributeAccessIssue]
+            dpi_eff = _cap_dpi_for_page(pg, dpi)
+            mat = fitz.Matrix(dpi_eff/72.0, dpi_eff/72.0)
+            pix = pg.get_pixmap(matrix=mat, alpha=False, colorspace=fitz.csRGB)  # pyright: ignore[reportAttributeAccessIssue]
             jpg_b = pix.tobytes("jpeg", jpg_quality=jpg_q)
+            del pix
+
             try:
                 est_pdf = cast(bytes, img2pdf.convert(jpg_b))
             except Exception:
