@@ -161,33 +161,6 @@ let rotate= [];
 let level_page = [];
 let filesInMemory = [];     // Array<File> acumulado (apenas para lista)
 
-async function warmup(){
-  // Fase 1: acorda a instância (sem exigir CORS)
-  for (let i = 0; i < 6; i++) {
-    try {
-      await fetch(BASE + '/health?ts=' + Date.now(), { method:'GET', cache:'no-store', mode:'no-cors' });
-    } catch(_) {}
-    await new Promise(r => setTimeout(r, 1200));
-  }
-  // Fase 2: confirma que já está de pé (precisa 200 OK com CORS)
-  for (let i = 0; i < 6; i++) {
-    try {
-      const r = await fetch(BASE + '/health?ts=' + Date.now(), { method:'GET', cache:'no-store' });
-      if (r.ok) return true;           // só prossegue quando houver 200 + CORS
-    } catch(_) {}
-    await new Promise(r => setTimeout(r, 800));
-  }
-  return false; // ainda indisponível
-}
-
-
-
-
-
-const VALID_LEVELS = new Set(['none','min','med','max']);
-function normalizeLevel(v){ return VALID_LEVELS.has(v) ? v : 'none'; }
-
-
 function setStatus(t){ $('#stat').textContent = t; }
 
 function displayName(it){
@@ -202,24 +175,14 @@ let lvlGlobalValue = 'none';
 function syncGlobalPills(){
   $$('#lvlGlobal .pill').forEach(p=>p.classList.toggle('active', p.dataset.lvl===lvlGlobalValue));
 }
-// Compressão global (fix: sincroniza arrays pelo tamanho de items)
 lvlGlobal.addEventListener('click', (ev)=>{
   const el = ev.target.closest('.pill'); if(!el) return;
   lvlGlobalValue = el.dataset.lvl;
-
-  // aplica no estado fonte (items)
-  items.forEach((_, i)=>{ items[i].level = lvlGlobalValue; });
-
-  // IMPORTANTe: refaz level_page do zero com o MESMO comprimento de items
-  level_page = items.map(()=> lvlGlobalValue);
-
-  // mantém arrays alinhados SEMPRE que mudar global
-  if (typeof syncArraysFromItems === 'function') syncArraysFromItems();
-
+  level_page = level_page.map(()=>lvlGlobalValue);
+  items.forEach((_,i)=>{ items[i].level=lvlGlobalValue; syncCardLevel(i); });
   syncGlobalPills();
-  renderGrid(); // re-render para deixar a mudança visível
 });
-
+syncGlobalPills();
 
 // Upload incremental -> POST imediato ao backend
 const fileInput = $('#fileInput');
@@ -259,7 +222,6 @@ async function doPreview(){
   const form = new FormData();
   filesInMemory.forEach(f=>form.append('files', f)); // envia TODOS os acumulados
   try{
-    await warmup();
     const r = await fetch(BASE + '/preview', { method:'POST', body: form, headers:{'Accept':'application/json'} });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const data = await r.json();
@@ -373,125 +335,44 @@ function rotateCard(i, d){
   if(img) img.style.transform = `rotate(${v}deg)`;
 }
 
-function sortKeyName(it){
-  const fi = (Array.isArray(filesInMemory) && filesInMemory[it.src_id])
-    ? filesInMemory[it.src_id].name
-    : null;
-  const base = (fi || it.filename || (`src${it.src_id}`)).toLowerCase();
-  const pn = String(it.page_index ?? 0).padStart(6,'0');
-  return `${base}#${pn}`;
-}
-
-// Ordenação global (corrigida)
+// Ordenação global
 $('#sortSel').addEventListener('change', ()=>{
   const val = $('#sortSel').value;
   if(val==='original'){
-    items.sort((a,b)=> (a.__orig??0) - (b.__orig??0));
+    items.sort((a,b)=> (a.__orig??0) - (b.__orig??0) );
   }else if(val==='name'){
-    items.sort((a,b)=> sortKeyName(a).localeCompare(sortKeyName(b)));
+    items.sort((a,b)=> displayName(a).localeCompare(displayName(b)) || a.page_index-b.page_index );
   }else if(val==='type'){
     const rank = (it)=> it.is_pdf ? 1 : 0; // imagem primeiro
-    items.sort((a,b)=> rank(a) - rank(b) || sortKeyName(a).localeCompare(sortKeyName(b)));
+    items.sort((a,b)=> rank(a) - rank(b) || displayName(a).localeCompare(displayName(b)) || a.page_index-b.page_index );
   }
-  order      = items.map(it=>({src_id:it.src_id,page_index:it.page_index}));
-  keep       = items.map(it=>it.keep);
-  rotate     = items.map(it=>it.rotation||0);
+  order = items.map(it=>({src_id:it.src_id,page_index:it.page_index}));
+  keep  = items.map(it=>it.keep);
+  rotate= items.map(it=>it.rotation||0);
   level_page = items.map(it=>it.level||'none');
   renderGrid();
 });
-
-function syncArraysFromItems(){
-  lvlGlobalValue = normalizeLevel(lvlGlobalValue);
-
-  // Garante consistência do estado-fonte
-  items = items.map(it => ({
-    ...it,
-    keep: !!it.keep,
-    rotation: ((parseInt(it.rotation||0,10) || 0) % 360 + 360) % 360,
-    level: normalizeLevel(it.level || 'none'),
-  }));
-
-  // Espelha nos arrays paralelos (mesmo comprimento de items)
-  order      = items.map(it=>({ src_id: it.src_id, page_index: it.page_index }));
-  keep       = items.map(it=> it.keep);
-  rotate     = items.map(it=> it.rotation);
-  level_page = items.map(it=> it.level);
-
-  // Sanidade extra
-  if (order.length!==keep.length || keep.length!==rotate.length || rotate.length!==level_page.length){
-    throw new Error('Payload desalinhado: tamanhos diferentes entre order/keep/rotate/level_page');
-  }
-}
-
-
 
 // Estimar
 $('#btnEstimate').addEventListener('click', async ()=>{
   if(!token){ alert('Adicione arquivos primeiro.'); return; }
   setStatus('Estimando…');
-
-  syncArraysFromItems();
-
   try{
-  const lp = (lvlGlobalValue === 'none') ? level_page : [];
-  let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue };
-  
-  await warmup(); 
-  let r = await fetch(BASE + '/estimate', {
-    method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
-    body: JSON.stringify(payload)
-  });
-
-    // retry 1x se 502/network
-    if (!r.ok && (r.status === 502 || r.type === 'opaqueredirect')) {
-    await warmup();
-    r = await fetch(BASE + '/estimate', {
+    const payload = { token, order, keep, rotate, level_page };
+    const r = await fetch(BASE + '/estimate', {
       method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
       body: JSON.stringify(payload)
     });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    const before = data.total_before_bytes||0;
+    const after  = data.total_after_bytes||0;
+    const pct = before>0 ? Math.round(100 - (after*100/before)) : 0;
+    setStatus(`Estimativa: ${(before/1e6).toFixed(2)}MB → ${(after/1e6).toFixed(2)}MB (−${pct}%)`);
+  }catch(e){
+    console.error(e); alert('Erro no /estimate.'); setStatus('Erro na estimativa.');
   }
-
-  // Retry se sessão caiu
-  if(r.status === 404){
-    const txt = await r.text().catch(()=> '');
-    if ((txt||'').includes('Sessão expirada')) {
-      await doPreview();                 // recria token e items
-      syncArraysFromItems();             // realinha arrays
-      const lp2 = (lvlGlobalValue === 'none') ? level_page : [];
-      payload = { token, order, keep, rotate, level_page: lp2, level_global: lvlGlobalValue };
-      r = await fetch(BASE + '/estimate', {
-        method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
-        body: JSON.stringify(payload)
-      });
-    } else {
-      // 404 por outro motivo
-      alert(`Erro no /estimate (404).\n${txt || 'Sem detalhe.'}`);
-      setStatus('Erro na estimativa.');
-      return;
-    }
-  }
-
-  if(!r.ok){
-    const txt = await r.text().catch(()=> '');
-    console.error('Estimate FAIL', r.status, txt, {payload});
-    alert(`Erro no /estimate (${r.status}).\n${txt || 'Sem detalhe.'}`);
-    setStatus('Erro na estimativa.');
-    return;
-  }
-
-  const data = await r.json();
-  const before = data.total_before_bytes||0;
-  const after  = data.total_after_bytes||0;
-  const pct = before>0 ? Math.round(100 - (after*100/before)) : 0;
-  setStatus(`Estimativa: ${(before/1e6).toFixed(2)}MB → ${(after/1e6).toFixed(2)}MB (−${pct}%)`);
-}catch(e){
-  console.error('Estimate EXC', e);
-  alert('Exceção no /estimate (ver console).');
-  setStatus('Erro na estimativa.');
-}
-
 });
-
 
 // Processar
 $('#btnProcess').addEventListener('click', async ()=>{
@@ -499,69 +380,29 @@ $('#btnProcess').addEventListener('click', async ()=>{
   const filename_out = ($('#fname').value||'arquivo_final.pdf').trim().toLowerCase().endsWith('.pdf')
     ? $('#fname').value.trim() : $('#fname').value.trim()+'.pdf';
   setStatus('Processando…');
-  syncArraysFromItems();
   try{
-  const lp = (lvlGlobalValue === 'none') ? level_page : [];
-  let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue, filename_out };
-  await warmup(); 
-  let r = await fetch(BASE + '/process', {
-    method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
-    body: JSON.stringify(payload)
-  });
-    if (!r.ok && (r.status === 502 || r.type === 'opaqueredirect')) {
-    await warmup();
-    r = await fetch(BASE + '/process', {
+    const payload = { token, order, keep, rotate, level_page, filename_out };
+    const r = await fetch(BASE + '/process', {
       method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
       body: JSON.stringify(payload)
     });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    const url = data.download_url ? (BASE + data.download_url) : (BASE + '/download/one-time/' + data.job_id);
+    const a = $('#downloadLink');
+    a.href = url; a.style.display='inline-block';
+    a.textContent = 'Baixar: ' + (data.filename || filename_out);
+    setStatus('Arquivo pronto para download.');
+    a.onclick = () => {
+      setTimeout(() => {
+        a.style.display = 'none';
+        a.removeAttribute('href');
+        a.textContent = 'Baixar';
+      }, 500);
+    };
+  }catch(e){
+    console.error(e); alert('Erro no /process.'); setStatus('Erro no processamento.');
   }
-
-  // Retry se sessão caiu
-  if(r.status === 404){
-    const txt = await r.text().catch(()=> '');
-    if ((txt||'').includes('Sessão expirada')) {
-      await doPreview();                 // recria token e items
-      syncArraysFromItems();             // realinha arrays
-      const lp2 = (lvlGlobalValue === 'none') ? level_page : [];
-      payload = { token, order, keep, rotate, level_page: lp2, level_global: lvlGlobalValue, filename_out };
-      r = await fetch(BASE + '/process', {
-        method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
-        body: JSON.stringify(payload)
-      });
-    } else {
-      alert(`Erro no /process (404).\n${txt || 'Sem detalhe.'}`);
-      setStatus('Erro no processamento.');
-      return;
-    }
-  }
-
-  if(!r.ok){
-    const txt = await r.text().catch(()=> '');
-    console.error('Process FAIL', r.status, txt, {payload});
-    alert(`Erro no /process (${r.status}).\n${txt || 'Sem detalhe.'}`);
-    setStatus('Erro no processamento.');
-    return;
-  }
-
-  const data = await r.json();
-  const url = data.download_url ? (BASE + data.download_url) : (BASE + '/download/one-time/' + data.job_id);
-  const a = $('#downloadLink');
-  a.href = url; a.style.display='inline-block';
-  a.textContent = 'Baixar: ' + (data.filename || filename_out);
-  setStatus('Arquivo pronto para download.');
-  a.onclick = () => {
-    setTimeout(() => {
-      a.style.display = 'none';
-      a.removeAttribute('href');
-      a.textContent = 'Baixar';
-    }, 500);
-  };
-}catch(e){
-  console.error('Process EXC', e);
-  alert('Exceção no /process (ver console).');
-  setStatus('Erro no processamento.');
-}
-
 });
 
 function mkBtn(txt, ...cls){ const b=document.createElement('button'); b.className=['btn',...cls].join(' '); b.textContent=txt; return b; }
