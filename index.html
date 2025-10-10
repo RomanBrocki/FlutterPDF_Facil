@@ -410,11 +410,33 @@ $('#btnEstimate').addEventListener('click', async ()=>{
 
   try{
   const lp = (lvlGlobalValue === 'none') ? level_page : [];
-  const payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue };
-  const r = await fetch(BASE + '/estimate', {
+  let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue };
+
+  let r = await fetch(BASE + '/estimate', {
     method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
     body: JSON.stringify(payload)
   });
+
+  // Retry se sessão caiu
+  if(r.status === 404){
+    const txt = await r.text().catch(()=> '');
+    if ((txt||'').includes('Sessão expirada')) {
+      await doPreview();                 // recria token e items
+      syncArraysFromItems();             // realinha arrays
+      const lp2 = (lvlGlobalValue === 'none') ? level_page : [];
+      payload = { token, order, keep, rotate, level_page: lp2, level_global: lvlGlobalValue };
+      r = await fetch(BASE + '/estimate', {
+        method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify(payload)
+      });
+    } else {
+      // 404 por outro motivo
+      alert(`Erro no /estimate (404).\n${txt || 'Sem detalhe.'}`);
+      setStatus('Erro na estimativa.');
+      return;
+    }
+  }
+
   if(!r.ok){
     const txt = await r.text().catch(()=> '');
     console.error('Estimate FAIL', r.status, txt, {payload});
@@ -422,6 +444,7 @@ $('#btnEstimate').addEventListener('click', async ()=>{
     setStatus('Erro na estimativa.');
     return;
   }
+
   const data = await r.json();
   const before = data.total_before_bytes||0;
   const after  = data.total_after_bytes||0;
@@ -432,6 +455,7 @@ $('#btnEstimate').addEventListener('click', async ()=>{
   alert('Exceção no /estimate (ver console).');
   setStatus('Erro na estimativa.');
 }
+
 });
 
 
@@ -444,12 +468,31 @@ $('#btnProcess').addEventListener('click', async ()=>{
   syncArraysFromItems();
   try{
   const lp = (lvlGlobalValue === 'none') ? level_page : [];
-  const payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue, filename_out };
-
-  const r = await fetch(BASE + '/process', {
+  let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue, filename_out };
+  let r = await fetch(BASE + '/process', {
     method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
     body: JSON.stringify(payload)
   });
+
+  // Retry se sessão caiu
+  if(r.status === 404){
+    const txt = await r.text().catch(()=> '');
+    if ((txt||'').includes('Sessão expirada')) {
+      await doPreview();                 // recria token e items
+      syncArraysFromItems();             // realinha arrays
+      const lp2 = (lvlGlobalValue === 'none') ? level_page : [];
+      payload = { token, order, keep, rotate, level_page: lp2, level_global: lvlGlobalValue, filename_out };
+      r = await fetch(BASE + '/process', {
+        method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify(payload)
+      });
+    } else {
+      alert(`Erro no /process (404).\n${txt || 'Sem detalhe.'}`);
+      setStatus('Erro no processamento.');
+      return;
+    }
+  }
+
   if(!r.ok){
     const txt = await r.text().catch(()=> '');
     console.error('Process FAIL', r.status, txt, {payload});
@@ -457,6 +500,7 @@ $('#btnProcess').addEventListener('click', async ()=>{
     setStatus('Erro no processamento.');
     return;
   }
+
   const data = await r.json();
   const url = data.download_url ? (BASE + data.download_url) : (BASE + '/download/one-time/' + data.job_id);
   const a = $('#downloadLink');
@@ -475,6 +519,7 @@ $('#btnProcess').addEventListener('click', async ()=>{
   alert('Exceção no /process (ver console).');
   setStatus('Erro no processamento.');
 }
+
 });
 
 function mkBtn(txt, ...cls){ const b=document.createElement('button'); b.className=['btn',...cls].join(' '); b.textContent=txt; return b; }
