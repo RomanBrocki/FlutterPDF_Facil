@@ -409,7 +409,8 @@ $('#btnEstimate').addEventListener('click', async ()=>{
   syncArraysFromItems();
 
   try{
-  const payload = { token, order, keep, rotate, level_page, level_global: lvlGlobalValue };
+  const lp = (lvlGlobalValue === 'none') ? level_page : [];
+  const payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue };
   const r = await fetch(BASE + '/estimate', {
     method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
     body: JSON.stringify(payload)
@@ -442,7 +443,9 @@ $('#btnProcess').addEventListener('click', async ()=>{
   setStatus('Processando…');
   syncArraysFromItems();
   try{
-  const payload = { token, order, keep, rotate, level_page, level_global: lvlGlobalValue, filename_out };
+  const lp = (lvlGlobalValue === 'none') ? level_page : [];
+  const payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue, filename_out };
+
   const r = await fetch(BASE + '/process', {
     method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
     body: JSON.stringify(payload)
