@@ -335,20 +335,28 @@ function rotateCard(i, d){
   if(img) img.style.transform = `rotate(${v}deg)`;
 }
 
-// Ordenação global
+function sortKeyName(it){
+  // cria chave estável para ordenação
+  const fname = (filesInMemory[it.src_id]?.name || (`src${it.src_id}`)).toLowerCase();
+  const pn = String(it.page_index ?? 0).padStart(6,'0');
+  return `${fname}#${pn}`;
+}
+
+// Ordenação global (corrigida)
 $('#sortSel').addEventListener('change', ()=>{
   const val = $('#sortSel').value;
   if(val==='original'){
-    items.sort((a,b)=> (a.__orig??0) - (b.__orig??0) );
+    items.sort((a,b)=> (a.__orig??0) - (b.__orig??0));
   }else if(val==='name'){
-    items.sort((a,b)=> displayName(a).localeCompare(displayName(b)) || a.page_index-b.page_index );
+    items.sort((a,b)=> sortKeyName(a).localeCompare(sortKeyName(b)));
   }else if(val==='type'){
     const rank = (it)=> it.is_pdf ? 1 : 0; // imagem primeiro
-    items.sort((a,b)=> rank(a) - rank(b) || displayName(a).localeCompare(displayName(b)) || a.page_index-b.page_index );
+    items.sort((a,b)=> rank(a) - rank(b) || sortKeyName(a).localeCompare(sortKeyName(b)));
   }
-  order = items.map(it=>({src_id:it.src_id,page_index:it.page_index}));
-  keep  = items.map(it=>it.keep);
-  rotate= items.map(it=>it.rotation||0);
+
+  order      = items.map(it=>({src_id:it.src_id,page_index:it.page_index}));
+  keep       = items.map(it=>it.keep);
+  rotate     = items.map(it=>it.rotation||0);
   level_page = items.map(it=>it.level||'none');
   renderGrid();
 });
