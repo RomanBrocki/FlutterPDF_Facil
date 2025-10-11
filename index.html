@@ -149,8 +149,11 @@
   </main>
 
 <script>
-const BASE = 'https://pdf-facil.onrender.com';
-const $  = (s)=>document.querySelector(s);
+const BASE = (location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+  ? 'http://127.0.0.1:8000'
+  : 'https://pdf-facil.onrender.com';
+const isLocal = BASE.includes('127.0.0.1') || BASE.includes('localhost');
+const $ = (s)=>document.querySelector(s);         // <-- define $
 const $$ = (s)=>Array.from(document.querySelectorAll(s));
 
 let token = null;
@@ -162,6 +165,7 @@ let level_page = [];
 let filesInMemory = [];     // Array<File> acumulado (apenas para lista)
 
 async function warmup(){
+  if (isLocal) return true; // sem wake-up no local
   // Fase 1: acorda a instância (sem exigir CORS)
   for (let i = 0; i < 6; i++) {
     try {
