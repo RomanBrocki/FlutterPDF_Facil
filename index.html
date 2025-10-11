@@ -433,8 +433,7 @@ $('#btnEstimate').addEventListener('click', async ()=>{
   syncArraysFromItems();
 
   try {
-  const lp = (lvlGlobalValue === 'none') ? level_page : [];
-  let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue };
+  let payload = { token, order, keep, rotate, level_page: level_page.slice(), level_global: lvlGlobalValue };
 
   await warmup();
   let r = await fetch(BASE + '/estimate', {
@@ -510,8 +509,7 @@ $('#btnProcess').addEventListener('click', async ()=>{
   setStatus('Processando…');
   syncArraysFromItems();
   try {
-  const lp = (lvlGlobalValue === 'none') ? level_page : [];
-  let payload = { token, order, keep, rotate, level_page: lp, level_global: lvlGlobalValue, filename_out };
+  let payload = { token, order, keep, rotate, level_page: level_page.slice(), level_global: lvlGlobalValue, filename_out };
 
   await warmup();
   let r = await fetch(BASE + '/process', {

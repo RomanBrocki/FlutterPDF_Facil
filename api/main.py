@@ -68,24 +68,24 @@ def _before_size_approx(src_bytes: bytes, is_pdf: bool, page_ix: int, page_count
 
 
 def _levels_apply(level_page: list[str], level_global: str | None, keep: list[bool]) -> list[str]:
-    """Normaliza níveis por página e aplica `level_global` quando válido.
-
+    """
+    Global define o padrão; individual sobrescreve.
     Regras:
-    - Se `level_page` vier vazio/curto, completa com 'none' até o tamanho de `keep`.
-    - Níveis inválidos viram 'none'.
-    - `level_global` só é aplicado se for um dos válidos ('none'|'min'|'med'|'max').
-    - Páginas com `keep=False` mantêm o nível da posição (irrelevante no processamento).
+      - Para cada página:
+         * se level_page[i] ∈ {none,min,med,max} → usa esse valor
+         * senão → usa level_global se válido, senão 'none'
     """
     VALID = {"none", "min", "med", "max"}
-    lp = (level_page or [])[:]
-    # completa para o tamanho de keep
-    if len(lp) < len(keep):
-        lp += ["none"] * (len(keep) - len(lp))
-    # sanitiza conteúdo
-    lp = [lv if lv in VALID else "none" for lv in lp]
-    if level_global in VALID:
-        return [level_global if k else lv for k, lv in zip(keep, lp)]
-    return lp[:]
+    n = len(keep)
+    glb = level_global if level_global in VALID else "none"
+
+    res = []
+    for i in range(n):
+        v = level_page[i] if (i < len(level_page)) else None
+        res.append(v if v in VALID else glb)
+    return res
+
+
 
 @app.get("/health")
 def health():
