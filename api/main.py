@@ -24,15 +24,11 @@ FILE_MAX_MB  = int(os.getenv("FILE_MAX_MB", "50"))
 BATCH_MAX_MB = int(os.getenv("BATCH_MAX_MB", "75"))
 
 origins_env = (os.getenv("CORS_ALLOW_ORIGINS", "*") or "*").strip()
-if origins_env == "*":
-    CORS_ALLOW_ORIGINS = ["*"]
-    CORS_ALLOW_CREDENTIALS = False   # essencial quando usa "*"
-else:
-    CORS_ALLOW_ORIGINS = [o.strip() for o in origins_env.split(",") if o.strip()]
-    CORS_ALLOW_CREDENTIALS = True
+allow_all = (origins_env == "*")
+CORS_ALLOW_ORIGINS = ["*"] if allow_all else [o.strip() for o in origins_env.split(",") if o.strip()]
+CORS_ALLOW_CREDENTIALS = False if allow_all else True
 
-app = FastAPI(title="PDF_Facil API (mínima)")
-
+app = FastAPI(title="PDF Fácil — API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ALLOW_ORIGINS,
@@ -40,6 +36,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 
@@ -89,17 +86,6 @@ def _levels_apply(level_page: list[str], level_global: str | None, keep: list[bo
     if level_global in VALID:
         return [level_global if k else lv for k, lv in zip(keep, lp)]
     return lp[:]
-
-
-app = FastAPI(title="PDF_Facil API (mínima)")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ALLOW_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/health")
 def health():
