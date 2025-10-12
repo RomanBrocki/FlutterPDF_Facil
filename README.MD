@@ -1,48 +1,45 @@
-# 📄 PDF Fácil — API + Web App
+# 📄 PDF Fácil — Web App + API
 
-**PDF Fácil** é uma ferramenta gratuita que permite **unir, comprimir e organizar arquivos PDF e imagens (JPG/PNG)** diretamente do navegador.  
-Nenhum dado é salvo: tudo acontece **em memória**, e os arquivos são apagados automaticamente após alguns minutos.
-
----
-
-## 🌍 Site oficial
-
-🔗 **Acesse o app web:**  
-👉 [https://romanbrocki.github.io/PDF_Facil_API/](https://romanbrocki.github.io/PDF_Facil_API/)
-
-O site se comunica com o backend hospedado no Render:  
-🔧 [https://pdf-facil.onrender.com](https://pdf-facil.onrender.com)
+**PDF Fácil** é uma ferramenta gratuita e aberta que permite **unir, comprimir e organizar PDFs e imagens (JPG/PNG)** diretamente no navegador — sem instalar nada.  
+Tudo é feito **em memória**, com total privacidade: os arquivos expiram automaticamente após alguns minutos.
 
 ---
 
-## 🧩 Como o sistema funciona
+## 🌐 Acesse agora
 
-O projeto é dividido em duas partes:
-
-| Parte | Hospedagem | Descrição |
-|-------|-------------|------------|
-| **Frontend (index.html)** | GitHub Pages | Interface web feita em HTML + JavaScript. Envia arquivos e recebe o PDF pronto. |
-| **Backend (FastAPI)** | Render | API em Python que faz o trabalho pesado (compressão, merge e geração do arquivo final). |
+- 🔗 **App Web:** [https://romanbrocki.github.io/PDF_Facil_API/](https://romanbrocki.github.io/PDF_Facil_API/)  
+- ⚙️ **Backend (API):** [https://pdf-facil.onrender.com](https://pdf-facil.onrender.com)
 
 ---
 
-## ⚙️ Estrutura do Projeto
+## 🧩 Arquitetura
+
+O sistema é dividido em duas partes independentes:
+
+| Camada | Hospedagem | Função |
+|---------|-------------|--------|
+| **Frontend** (`index.html`) | GitHub Pages | Interface em HTML + JavaScript puro. Envia os arquivos e baixa o PDF final. |
+| **Backend** (`api/`) | Render | API em FastAPI responsável por compressão, merge e geração do PDF. |
+
+---
+
+## ⚙️ Estrutura do repositório
 
 ```
 PDF_Facil_API/
 ├─ api/
-│  ├─ main.py          # Endpoints e lógica principal
-│  ├─ storage.py       # Sessões em memória (RAM + tempo de vida)
-│  ├─ thumbs.py        # Geração de miniaturas
-│  ├─ schemas.py       # Modelos de entrada/saída
-│  └─ jobs.py          # Geração e exclusão dos PDFs finais
+│  ├─ main.py          # Endpoints principais (preview, estimate, process, download)
+│  ├─ storage.py       # Sessões temporárias em RAM com TTL
+│  ├─ thumbs.py        # Miniaturas de PDFs e imagens
+│  ├─ schemas.py       # Modelos de entrada/saída (Pydantic)
+│  └─ jobs.py          # PDFs finais armazenados até o download (one-time)
 ├─ engine/
-│  ├─ engine_config.py # Presets de compressão
-│  └─ pdf_ops.py       # Funções de compressão, união e rotação
-├─ index.html          # Interface Web
+│  ├─ engine_config.py # Presets de compressão (none|min|med|max)
+│  └─ pdf_ops.py       # Motor principal de compressão, merge e estimativas
+├─ index.html          # Interface web
 ├─ requirements.txt    # Dependências Python
-├─ runtime.txt         # Versão Python usada no Render
-└─ DOCS.md             # Documentação técnica complementar
+├─ runtime.txt         # Versão Python (Render usa python-3.11.9)
+└─ README_API.md / README_ENGINE.md  # Documentação modular
 ```
 
 ---
@@ -53,109 +50,65 @@ PDF_Facil_API/
 1. Usuário envia arquivos → /preview
 2. API gera miniaturas e devolve token
 3. Usuário define ordem, rotação e compressão
-4. App envia tudo → /estimate (opcional)
-5. API estima tamanho final e mostra redução
+4. App envia → /estimate (opcional)
+5. API estima tamanho e mostra redução
 6. App envia → /process
-7. API gera PDF e devolve link temporário
-8. Usuário baixa o arquivo → /download/one-time/{job_id}
+7. API gera PDF e retorna link temporário
+8. Usuário baixa → /download/one-time/{job_id}
 ```
 
-O **token** identifica temporariamente a sessão (fica em memória).  
-O **job_id** identifica o PDF final (também em memória, até o download).
+- O **token** identifica a sessão temporária.  
+- O **job_id** identifica o PDF final (válido apenas até o download).
 
 ---
 
 ## 📦 Níveis de compressão
 
-| Nível | Efeito | Uso indicado |
-|-------|---------|---------------|
-| **none** | sem compressão | preservar qualidade máxima |
-| **min** | leve compressão (rasteriza só imagens) | documentos mistos |
-| **med** | compressão moderada (rasteriza tudo) | PDFs pesados |
-| **max** | compressão máxima | reduzir ao mínimo possível |
+| Nível | Modo | Efeito | Uso indicado |
+|-------|-------|--------|---------------|
+| **none** | — | sem compressão | preservar qualidade máxima |
+| **min** | smart | rasteriza só páginas imagem-only | documentos leves |
+| **med** | all | rasteriza todas as páginas (DPI 150, JPEG 70) | PDFs pesados |
+| **max** | all | rasteriza tudo (DPI 110, JPEG 50) | reduzir ao mínimo possível |
+
+Guard-rails garantem que **nunca se aumente o tamanho**:  
+se o resultado for maior que o original, o backend mantém o arquivo original.
 
 ---
 
-## 🧪 Exemplos de uso da API
+## 💻 Execução local
 
-### 🔹 Upload e preview
+1️⃣ **Instalar dependências**
 ```bash
-curl -X POST -F "files=@documento.pdf" https://pdf-facil.onrender.com/preview
+pip install -r requirements.txt
 ```
 
-Retorno (resumo):
-```json
-{
-  "token": "abc123",
-  "page_count_total": 12,
-  "items": [
-    {"src_id":0,"page_index":0,"is_pdf":true,"thumb_b64":"data:image/jpeg;base64,..."} 
-  ]
-}
-```
-
-### 🔹 Estimar tamanho
+2️⃣ **Rodar localmente**
 ```bash
-curl -X POST https://pdf-facil.onrender.com/estimate      -H "Content-Type: application/json"      -d '{
-          "token":"abc123",
-          "order":[{"src_id":0,"page_index":0}],
-          "keep":[true],
-          "rotate":[0],
-          "level_page":["med"]
-         }'
+uvicorn api.main:app --reload --port 8765
 ```
 
-### 🔹 Gerar PDF final
-```bash
-curl -X POST https://pdf-facil.onrender.com/process      -H "Content-Type: application/json"      -d '{
-          "token":"abc123",
-          "order":[{"src_id":0,"page_index":0}],
-          "keep":[true],
-          "rotate":[0],
-          "level_page":["med"],
-          "filename_out":"resultado.pdf"
-         }'
+3️⃣ **Abrir a interface**
+```text
+http://127.0.0.1:5500/index.html?api=http://127.0.0.1:8765
 ```
+*(basta rodar também um `python -m http.server 5500` na pasta raiz)*
 
-Resposta:
-```json
-{
-  "download_url": "/download/one-time/xyz789",
-  "filename": "resultado.pdf"
-}
-```
+4️⃣ **Testar endpoints**
+Acesse [http://127.0.0.1:8765/docs](http://127.0.0.1:8765/docs)
 
 ---
 
-### 🔸 Exemplo JavaScript (`fetch`)
-```js
-const payload = { token, order, keep, rotate, level_page, filename_out: "meu_arquivo.pdf" };
+## 🔧 Variáveis de ambiente (Render)
 
-const res = await fetch("https://pdf-facil.onrender.com/process", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload)
-});
+| Variável | Descrição | Padrão |
+|-----------|------------|--------|
+| `FILE_MAX_MB` | Tamanho máximo por arquivo | 50 |
+| `BATCH_MAX_MB` | Limite total por upload | 75 |
+| `TTL_MINUTES` | Tempo de vida das sessões | 15 |
+| `CORS_ALLOW_ORIGINS` | Domínios permitidos | `*` |
 
-const data = await res.json();
-window.location.href = "https://pdf-facil.onrender.com" + data.download_url;
-```
-
----
-
-## ⚠️ Erros comuns
-
-| Mensagem | Causa | Solução |
-|-----------|--------|---------|
-| **Sessão expirada (404)** | Passaram mais de 15 minutos sem uso | Refazer upload e gerar novo token |
-| **job não encontrado/expirado** | O PDF já foi baixado ou o TTL expirou | Gerar novamente |
-| **Arquivo excede X MB** | Tamanho maior que permitido por `FILE_MAX_MB` | Enviar arquivo menor ou aumentar variável no backend |
-| **CORS error (bloqueio no navegador)** | Domínio do frontend não está autorizado | Adicionar domínio em `CORS_ALLOW_ORIGINS` |
-
----
-
-## 🔧 Configuração do backend (Render)
-
+Exemplo:
 ```env
 FILE_MAX_MB=50
 BATCH_MAX_MB=75
@@ -163,50 +116,33 @@ TTL_MINUTES=15
 CORS_ALLOW_ORIGINS=https://romanbrocki.github.io,https://romanbrocki.github.io/PDF_Facil_API/
 ```
 
-Comando de inicialização:
-```bash
-uvicorn api.main:app --host 0.0.0.0 --port $PORT
-```
-
----
-
-## 💻 Execução local
-
-```bash
-pip install -r requirements.txt
-uvicorn api.main:app --reload
-```
-
-Acesse: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
 ---
 
 ## 🧠 Tecnologias utilizadas
 
-| Componente | Biblioteca |
-|-------------|-------------|
+| Tipo | Biblioteca |
+|------|-------------|
 | Backend | FastAPI, Uvicorn |
-| PDF | PyMuPDF, Pillow, img2pdf, pypdf |
-| Frontend | HTML + JavaScript puro |
+| PDFs e imagens | PyMuPDF, Pillow, img2pdf, pypdf |
+| Frontend | HTML + JavaScript |
 | Hospedagem | Render + GitHub Pages |
 
 ---
 
-## 🔒 Segurança e privacidade
+## 🔒 Privacidade
 
 - Nenhum arquivo é salvo no servidor.  
-- Tudo é mantido **em memória temporária**.  
-- Os links de download são válidos **uma única vez**.  
-- As sessões e arquivos expiram automaticamente após o tempo configurado (`TTL_MINUTES`, padrão 15).  
+- Tudo é mantido apenas **em memória RAM**.  
+- O link de download é **válido uma única vez**.  
+- Sessões e arquivos expiram após `TTL_MINUTES` (padrão: 15).
 
 ---
 
-## 🔗 Links oficiais
+## 🧩 Documentações complementares
 
-- 🌐 **App Web:** [https://romanbrocki.github.io/PDF_Facil_API/](https://romanbrocki.github.io/PDF_Facil_API/)  
-- ⚙️ **Backend:** [https://pdf-facil.onrender.com](https://pdf-facil.onrender.com)  
-- 💻 **Repositório:** [https://github.com/RomanBrocki/PDF_Facil_API](https://github.com/RomanBrocki/PDF_Facil_API)  
-- 🧱 **Versão antiga (Streamlit):** [https://pdf-facil.streamlit.app](https://pdf-facil.streamlit.app)
+- [README_API.md](api/README_API.md) — Detalhes técnicos da API  
+- [README_ENGINE.md](engine/README_ENGINE.md) — Lógica interna e compressão  
+- [index.html](index.html) — Frontend pronto para deploy  
 
 ---
 
@@ -216,16 +152,31 @@ Desenvolvido por **Roman Brocki**
 Backend em Python • Frontend em HTML/JS  
 Hospedagem gratuita no **Render** e **GitHub Pages**
 
+---
+
+## 📜 Licenças
+
+Este projeto utiliza bibliotecas open source sob licenças permissivas.
+
+- **PyMuPDF (AGPL-3.0)** — © Artifex Software, Inc.  
+  Uso permitido em software aberto; este projeto mantém código-fonte público conforme a AGPL.  
+- **Demais bibliotecas** (FastAPI, Pillow, Pydantic, Uvicorn etc.) — MIT/BSD/Apache-2.0, livres para uso interno e comercial.
+
+O código-fonte completo está disponível em  
+➡️ [https://github.com/RomanBrocki/PDF_Facil_API](https://github.com/RomanBrocki/PDF_Facil_API)
 
 ---
 
-## Licenças e Créditos
+## 🧾 Versões e compatibilidade
 
-Este projeto utiliza bibliotecas open source sob licenças permissivas.  
-Em especial, inclui o **PyMuPDF**, distribuído sob licença **AGPL-3.0**.
+| Componente | Versão mínima |
+|-------------|----------------|
+| Python | 3.11.9 |
+| Pillow | 10+ |
+| PyMuPDF | 1.24+ |
+| FastAPI | 0.110+ |
+| Uvicorn | 0.29+ |
 
-- **PyMuPDF (AGPL-3.0)** — © Artifex Software, Inc.  
-  Uso permitido em software aberto; este projeto mantém seu código-fonte público conforme os termos da AGPL.  
-- **Demais bibliotecas** (FastAPI, Pillow, Pydantic, Uvicorn, etc.) — sob licenças MIT, BSD ou Apache 2.0, livres para uso comercial.
+---
 
-O código-fonte completo deste projeto está disponível publicamente, cumprindo todas as exigências de licenciamento.
+**PDF Fácil — simples, rápido e seguro.**
